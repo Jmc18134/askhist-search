@@ -3,6 +3,7 @@ import praw
 from praw.models import Subreddit
 
 
+# r/askhistorians mod list
 MODS = ["Bernardito",
         "Daeres",
         "lngwstksgk",
@@ -16,6 +17,9 @@ MODS = ["Bernardito",
 
 
 def build_searchstring(mandatory, optional):
+    """Take in two lists of keywords and output a reddit-search string
+    Mandatory keywords are those which must all occur in the post,
+    whereas only one of the optional keywords must appear"""
     search_string = "({})"
     necessary = " AND ".join(mandatory)
     if optional is not None:
