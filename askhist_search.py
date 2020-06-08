@@ -18,6 +18,10 @@ MODS = ["Bernardito",
         "sunagainstgold"]
 
 
+def get_redirect(comment):
+    return None
+
+
 def build_searchstring(mandatory, optional):
     """Take in two lists of keywords and output a reddit-search string
     Mandatory keywords are those which must all occur in the post,
@@ -45,15 +49,26 @@ def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
 
     search_string = build_searchstring(targets, optional)
 
-    # 'Answered' r/askhistorians posts are defined as those with
-    # at least one top-level comment that isn't made by a moderator
     links = []
-    posts = askhistorians.search(search_string, limit=n)
+    # r/askhistorians posts always have an automod comment first
+    posts = (p for p in askhistorians.search(search_string, limit=n) if p.num_comments > 1)
     for post in posts:
-        if post.num_comments > 1 and any(comment.author is not None
-                                         and comment.author.name not in MODS
-                                         for comment in post.comments):
+        # 'Answered' r/askhistorians posts are defined as those with
+        # at least one top-level comment that isn't made by a moderator
+        answers = (comment for comment in post.comments if comment.author
+                   is not None and comment.author.name not in MODS)
+
+        # We only need one answer per post, so just get the first one
+        first = next(answers, None)
+        if first is None:
+            continue
+
+        nested_links = get_redirect(first)
+        if nested_links is not None:
+            links += (nested_links)
+        else:
             links.append(post.shortlink)
+
     return links
 
 
