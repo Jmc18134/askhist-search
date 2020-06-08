@@ -18,12 +18,9 @@ MODS = ["Bernardito",
 def build_searchstring(mandatory, optional):
     search_string = "({})"
     necessary = " AND ".join(mandatory)
-    print(necessary)
     if optional is not None:
         search_string += " AND ({})"
         options = " OR ".join(optional)
-        print(options)
-        print(search_string)
         return search_string.format(necessary, options)
     return search_string.format(necessary)
 
