@@ -18,7 +18,7 @@ MODS = ["Bernardito",
         "sunagainstgold"]
 
 
-def get_redirect(comment):
+def check_redirect(comment):
     return None
 
 
@@ -41,7 +41,7 @@ def build_searchstring(mandatory, optional):
     return mandatory_words
 
 
-def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
+def search_with(askhistorians: Subreddit, targets, optional, n):
     """Search for posts containing all of the keywords in target,
     and at least one of the keywords in optional
 
@@ -50,25 +50,22 @@ def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
     search_string = build_searchstring(targets, optional)
 
     links = []
-    # r/askhistorians posts always have an automod comment first
+    # r/askhistorians posts always have an automod comment first, so ignore 1-comment posts
     posts = (p for p in askhistorians.search(search_string, limit=n) if p.num_comments > 1)
     for post in posts:
-        # 'Answered' r/askhistorians posts are defined as those with
-        # at least one top-level comment that isn't made by a moderator
-        answers = (comment for comment in post.comments if comment.author
-                   is not None and comment.author.name not in MODS)
+        # A post is answered if it has comments which are not written
+        # by the mods. We only need one, so get the first one of these
+        answer = next((comment for comment in post.comments
+                      if comment.author is not None
+                      and comment.author.name not in MODS), None)
 
-        # We only need one answer per post, so just get the first one
-        first = next(answers, None)
-        if first is None:
-            continue
-
-        nested_links = get_redirect(first)
-        if nested_links is not None:
-            links += (nested_links)
-        else:
-            links.append(post.shortlink)
-
+        if answer is not None:
+            # Check if the comment actually just points to other comments
+            nested = check_redirect(answer)
+            if nested:
+                links += nested
+            else:
+                links.append(post.shortlink)
     return links
 
 
@@ -81,9 +78,15 @@ def main(mandatory, optional, n, r):
     if mandatory is None and optional is None:
         sys.stderr.write("{}: At least one keyword (optional or mandatory) is required\n".format(sys.argv[0]))
         sys.exit(1)
+
+    if n is None:
+        n = 10
+    if r is None:
+        r = 10
+
     reddit = praw.Reddit("askhist-search")
     results = search_with(reddit.subreddit("askhistorians"),
-                          mandatory, optional=optional, n=n)
+                          mandatory, optional, n)
     for link in results[:r]:
         print(link)
 
