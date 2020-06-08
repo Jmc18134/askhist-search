@@ -15,19 +15,26 @@ MODS = ["Bernardito",
         "sunagainstgold"]
 
 
+def build_searchstring(mandatory, optional):
+    search_string = "({})"
+    necessary = " AND ".join(mandatory)
+    print(necessary)
+    if optional is not None:
+        search_string += " AND ({})"
+        options = " OR ".join(optional)
+        print(options)
+        print(search_string)
+        return search_string.format(necessary, options)
+    return search_string.format(necessary)
+
+
 def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
     """Search for posts containing all of the keywords in target,
     and at least one of the keywords in optional
 
     Returns a generator of permalinks to answers"""
-    search_string = "({})"
-    necessary = " AND ".join(targets)
-    format_string = necessary
-    if optional is not None:
-        search_string += " AND ({})"
-        options = " OR ".join(optional)
-        format_string = necessary, options
-    search_string = search_string.format(format_string)
+
+    search_string = build_searchstring(targets, optional)
 
     # 'Answered' r/askhistorians posts are defined as those with
     # at least one top-level comment that isn't made by a moderator
@@ -47,9 +54,10 @@ def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
     n=("The number of results to search", "option", "n", int))
 def main(mandatory, optional, n):
     reddit = praw.Reddit("askhist-search")
-    res = search_with(reddit.subreddit("askhistorians"), ["mesopotamia"], n=12)
-    for p in res:
-        print(p)
+    results = search_with(reddit.subreddit("askhistorians"),
+                          mandatory, optional=optional, n=n)
+    for link in results:
+        print(link)
 
 
 if __name__ == '__main__':
