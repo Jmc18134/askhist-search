@@ -23,27 +23,30 @@ def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
     Returns a generator of permalinks to answers"""
     search_string = "({})"
     necessary = " AND ".join(targets)
+    format_string = necessary
     if optional is not None:
         search_string += " AND ({})"
         options = " OR ".join(optional)
-        search_string = search_string.format(necessary, options)
-    else:
-        search_string = search_string.format(necessary)
+        format_string = necessary, options
+    search_string = search_string.format(format_string)
 
     # 'Answered' r/askhistorians posts are defined as those with
     # at least one top-level comment that isn't made by a moderator
-    answered = (post for post in askhistorians.search(search_string, limit=n)
-                if post.num_comments > 1 and
-                any(comment.author is not None
-                    and comment.author.name not in MODS
-                    for comment in post.comments))
-
-    return (answer.permalink for answer in answered)
+    links = []
+    posts = askhistorians.search(search_string, limit=n)
+    for post in posts:
+        if post.num_comments > 1 and any(comment.author is not None
+                                         and comment.author.name not in MODS
+                                         for comment in post.comments):
+            links.append(post.shortlink)
+    return links
 
 
 def main():
     reddit = praw.Reddit("askhist-search")
-    search_with(reddit.subreddit("askhistorians"), ["mesopotamia"], n=12)
+    res = search_with(reddit.subreddit("askhistorians"), ["mesopotamia"], n=12)
+    for p in res:
+        print(p)
 
 
 if __name__ == '__main__':
