@@ -1,5 +1,4 @@
-import sys
-
+import plac
 import praw
 from praw.models import Subreddit
 
@@ -42,7 +41,11 @@ def search_with(askhistorians: Subreddit, targets, optional=None, n=10):
     return links
 
 
-def main():
+@plac.annotations(
+    mandatory=("Keywords which a post must have", "positional", None, str.split),
+    optional=("Keywords which a post must have at least one of", "option", "p", str.split),
+    n=("The number of results to search", "option", "n", int))
+def main(mandatory, optional, n):
     reddit = praw.Reddit("askhist-search")
     res = search_with(reddit.subreddit("askhistorians"), ["mesopotamia"], n=12)
     for p in res:
@@ -50,4 +53,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    plac.call(main)
