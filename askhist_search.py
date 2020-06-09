@@ -1,9 +1,13 @@
+import re
 import sys
 
 import plac
 import praw
-from praw.models import Subreddit
+from praw import models
 
+# Links to other r/askhistorians posts will usually be
+# [link](text) links, so we search for links surrounded by parenthesis
+reddit_url = re.compile("\(https://(?:www|old).reddit.com.*?\)")
 
 # r/askhistorians mod list
 MODS = ["Bernardito",
@@ -18,8 +22,18 @@ MODS = ["Bernardito",
         "sunagainstgold"]
 
 
-def check_redirect(comment):
-    return None
+def check_redirect(reddit, comment):
+    """Given a comment, find if it contains links to another post
+    If it does, return the title and shortlink for those linked posts"""
+    body = comment.body
+    matches = reddit_url.findall(body)
+    if matches is not None:
+        links = []
+        matches = [match.strip("()") for match in matches]
+        for match in matches:
+            post = models.Submission(reddit, url=match)
+            links.append((post.title, post.shortlink))
+        return links
 
 
 def build_searchstring(mandatory, optional):
@@ -41,15 +55,15 @@ def build_searchstring(mandatory, optional):
     return mandatory_words
 
 
-def search_with(askhistorians: Subreddit, targets, optional, n):
+def search_with(reddit, targets, optional, n):
     """Search for posts containing all of the keywords in target,
     and at least one of the keywords in optional
 
-    Returns a generator of permalinks to answers"""
-
-    search_string = build_searchstring(targets, optional)
+    Returns the (title, shortlink) of each answer"""
+    askhistorians = reddit.subreddit("askhistorians")
 
     links = []
+    search_string = build_searchstring(targets, optional)
     # r/askhistorians posts always have an automod comment first, so ignore 1-comment posts
     posts = (p for p in askhistorians.search(search_string, limit=n) if p.num_comments > 1)
     for post in posts:
@@ -61,11 +75,11 @@ def search_with(askhistorians: Subreddit, targets, optional, n):
 
         if answer is not None:
             # Check if the comment actually just points to other comments
-            nested = check_redirect(answer)
+            nested = check_redirect(reddit, answer)
             if nested:
                 links += nested
             else:
-                links.append(post.shortlink)
+                links.append((post.title, post.shortlink))
     return links
 
 
@@ -85,10 +99,9 @@ def main(mandatory, optional, n, r):
         r = 10
 
     reddit = praw.Reddit("askhist-search")
-    results = search_with(reddit.subreddit("askhistorians"),
-                          mandatory, optional, n)
-    for link in results[:r]:
-        print(link)
+    results = search_with(reddit, mandatory, optional, n)
+    for (title, link) in results[:r]:
+        print("\"{}\"\n\t{}".format(title, link))
 
 
 if __name__ == '__main__':
